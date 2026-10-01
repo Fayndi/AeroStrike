@@ -1,0 +1,35 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.storm_shadow.idle": {
+      "loop": true,
+      "bones": {
+        "root": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.storm_shadow.fly": {
+      "loop": true,
+      "animation_length": 0.8,
+      "bones": {
+        "fuselage": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.2": [0.1, 0, 0.3],
+            "0.4": [0, 0, 0],
+            "0.6": [-0.1, 0, -0.3],
+            "0.8": [0, 0, 0]
+          }
+        },
+        "wings": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.4": [0, 0, 0.3],
+            "0.8": [0, 0, 0]
+          }
+        }
+      }
+    }
+  }
+}

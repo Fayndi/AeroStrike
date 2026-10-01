@@ -19,8 +19,15 @@
 - **NeoForge 1.21.1 Ready**:
   - Данные предметов изолированы через слой фасадов (`ItemDataFacade`), что позволит мгновенно перейти с NBT на `DataComponentType`.
   - Сетевые пакеты (`net.strike.aerostrike.common.network`) отделены от контекста `NetworkEvent.Context`.
-- **GeckoLib 4.4.x**: анимации и геометрия 3D-моделей техники.
+- **GeckoLib 4.8.4**: анимации и геометрия 3D-моделей техники.
 - **Mixin Ready**: базовая конфигурация Mixin (`aerostrike.mixins.json`) для кастомных манипуляций камерой дронов и рендером.
+- **Developer Guide**: полное руководство по созданию ракет и работе с физикой находится в [`docs/MISSILE_DEVELOPMENT_GUIDE.md`](docs/MISSILE_DEVELOPMENT_GUIDE.md).
+
+---
+
+## 🎯 Текущий статус разработки ракет
+- **FP-5 «Flamingo»** (`Fp5FlamingoEntity`): тяжелая крылатая ракета наземного базирования (находится в доработке вторым разработчиком).
+- **Storm Shadow / SCALP-EG** (`StormShadowEntity`): авиационная малозаметная крылатая ракета со стелс-профилем и воздушным пуском (в активной разработке).
 
 ---
 

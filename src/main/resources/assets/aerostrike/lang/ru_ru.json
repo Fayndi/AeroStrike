@@ -1,6 +1,7 @@
 {
   "itemGroup.aerostrike": "AeroStrike: Военные Системы",
   "item.aerostrike.fp5_flamingo": "Крылатая ракета FP-5 «Flamingo»",
+  "item.aerostrike.storm_shadow": "Крылатая ракета Storm Shadow / SCALP-EG",
   "item.aerostrike.cruise_missile": "Крылатая ракета",
   "item.aerostrike.ballistic_missile": "Баллистическая ракета",
   "item.aerostrike.fpv_drone": "FPV-дрон камикадзе",
@@ -9,5 +10,6 @@
   "block.aerostrike.missile_silo": "Пусковая шахта ракет",
   "block.aerostrike.radar_station": "РЛС раннего обнаружения",
   "entity.aerostrike.fp5_flamingo": "Крылатая ракета FP-5 «Flamingo»",
+  "entity.aerostrike.storm_shadow": "Крылатая ракета Storm Shadow / SCALP-EG",
   "message.aerostrike.missile_launched": "§c[AeroStrike] §fРакета запущена по координатам: X=%d, Y=%d, Z=%d"
 }

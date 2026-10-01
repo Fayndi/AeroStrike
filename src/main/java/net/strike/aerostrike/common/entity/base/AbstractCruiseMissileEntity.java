@@ -65,13 +65,24 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
         this.noPhysics = true; // We perform custom high-precision raycast physics
     }
 
-    // Abstract specifications for different missile types (Flamingo, Tomahawk, etc.)
     public abstract float getMaxCruiseSpeed();      // Blocks per tick (e.g. 1.2f = 24 m/s)
     public abstract float getAcceleration();        // Acceleration rate per tick
     public abstract float getTurnRate();            // Max steering angle per tick in degrees
-    public abstract int getBoosterDurationTicks();  // Duration of solid rocket booster phase
+    public abstract int getBoosterDurationTicks();  // Duration of solid rocket booster phase (or drop phase)
     public abstract float getCruiseClearance();     // Desired altitude above ground in cruise phase
     public abstract float getWarheadYield();        // Explosion power
+
+    public boolean isAirLaunched() {
+        return false;
+    }
+
+    public float getRadarSignature() {
+        return 1.0f; // 1.0 = standard, 0.15 = stealth
+    }
+
+    public int getPenetrationDepth() {
+        return 0; // Number of blocks to penetrate before warhead detonation (BROACH bunker-buster)
+    }
 
     @Override
     protected void defineSynchedData() {
@@ -105,15 +116,27 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
         this.setFlightPhase(FlightPhase.BOOST);
         this.ticksInFlight = 0;
 
-        // Initial launch kick: 45-degree climb towards target direction
         Vec3 toTarget = new Vec3(target.getX() - this.getX(), 0, target.getZ() - this.getZ()).normalize();
-        Vec3 initialMotion = new Vec3(toTarget.x * 0.4, 0.7, toTarget.z * 0.4);
-        this.setDeltaMovement(initialMotion);
-        this.updateRotationFromMotion(initialMotion);
 
-        if (!this.level().isClientSide) {
-            this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
-                    SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.HOSTILE, 3.0f, 0.8f);
+        if (isAirLaunched()) {
+            // Air drop: initial forward momentum along target vector with gentle downward drop
+            Vec3 initialMotion = new Vec3(toTarget.x * 0.7, -0.2, toTarget.z * 0.7);
+            this.setDeltaMovement(initialMotion);
+            this.updateRotationFromMotion(initialMotion);
+            if (!this.level().isClientSide) {
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.PISTON_CONTRACT, SoundSource.HOSTILE, 2.0f, 1.2f);
+            }
+        } else {
+            // Ground launch: 45-degree booster climb towards target direction
+            Vec3 initialMotion = new Vec3(toTarget.x * 0.4, 0.7, toTarget.z * 0.4);
+            this.setDeltaMovement(initialMotion);
+            this.updateRotationFromMotion(initialMotion);
+
+            if (!this.level().isClientSide) {
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.HOSTILE, 3.0f, 0.8f);
+            }
         }
     }
 
@@ -172,6 +195,27 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
      */
     protected void tickBoosterPhase() {
         Vec3 motion = this.getDeltaMovement();
+
+        if (isAirLaunched()) {
+            // Air-drop phase: free fall under gravity, slight aerodynamic drag, then turbojet ignite
+            motion = new Vec3(motion.x * 0.98, motion.y - 0.03, motion.z * 0.98);
+            this.setDeltaMovement(motion);
+
+            if (this.ticksInFlight >= getBoosterDurationTicks()) {
+                this.setFlightPhase(FlightPhase.CRUISE);
+                BlockPos target = getTargetPos();
+                if (target != null) {
+                    Vec3 horizDir = new Vec3(target.getX() - this.getX(), 0, target.getZ() - this.getZ()).normalize();
+                    this.setDeltaMovement(new Vec3(horizDir.x * getMaxCruiseSpeed() * 0.8, -0.05, horizDir.z * getMaxCruiseSpeed() * 0.8));
+                }
+                if (!this.level().isClientSide) {
+                    this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                            SoundEvents.GENERIC_EXPLODE, SoundSource.HOSTILE, 1.2f, 1.8f);
+                }
+            }
+            return;
+        }
+
         float currentSpeed = (float) motion.length();
         float targetSpeed = getMaxCruiseSpeed() * 0.8f;
 
@@ -339,6 +383,12 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
         Vec3 exhaustPos = this.position().add(back);
 
         if (phase == FlightPhase.BOOST) {
+            if (isAirLaunched()) {
+                if (this.ticksInFlight < 8) {
+                    this.level().addParticle(ParticleTypes.CLOUD, exhaustPos.x, exhaustPos.y, exhaustPos.z, 0, 0, 0);
+                }
+                return;
+            }
             // Intense solid rocket motor flame and smoke plume
             this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
                     exhaustPos.x, exhaustPos.y, exhaustPos.z,
@@ -362,6 +412,15 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
      */
     protected void onImpact(HitResult hitResult) {
         if (!this.level().isClientSide) {
+            int penetration = getPenetrationDepth();
+            if (penetration > 0 && hitResult.getType() == HitResult.Type.BLOCK) {
+                // BROACH penetrating warhead logic: burrow penetration blocks in direction of motion
+                Vec3 motion = this.getDeltaMovement();
+                if (motion.lengthSqr() > 0.001) {
+                    Vec3 burstPos = this.position().add(motion.normalize().scale(penetration));
+                    this.setPos(burstPos);
+                }
+            }
             this.explode();
             this.discard();
         }

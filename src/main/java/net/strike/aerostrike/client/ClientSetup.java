@@ -29,6 +29,7 @@ public final class ClientSetup {
 
     private static void registerEntityRenderers(final EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.FP5_FLAMINGO.get(), Fp5FlamingoRenderer::new);
+        event.registerEntityRenderer(ModEntities.STORM_SHADOW.get(), net.strike.aerostrike.client.renderer.missile.StormShadowRenderer::new);
     }
 
     private ClientSetup() {}

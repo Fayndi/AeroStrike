@@ -8,6 +8,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.strike.aerostrike.AeroStrike;
 import net.strike.aerostrike.common.entity.missile.Fp5FlamingoEntity;
+import net.strike.aerostrike.common.entity.missile.StormShadowEntity;
 
 public final class ModEntities {
     public static final DeferredRegister<EntityType<?>> ENTITIES =
@@ -20,6 +21,14 @@ public final class ModEntities {
                     .updateInterval(1)
                     .fireImmune()
                     .build(new ResourceLocation(AeroStrike.MOD_ID, "fp5_flamingo").toString()));
+
+    public static final RegistryObject<EntityType<StormShadowEntity>> STORM_SHADOW =
+            ENTITIES.register("storm_shadow", () -> EntityType.Builder.<StormShadowEntity>of(StormShadowEntity::new, MobCategory.MISC)
+                    .sized(1.1f, 0.8f)
+                    .clientTrackingRange(256)
+                    .updateInterval(1)
+                    .fireImmune()
+                    .build(new ResourceLocation(AeroStrike.MOD_ID, "storm_shadow").toString()));
 
     private ModEntities() {}
 }

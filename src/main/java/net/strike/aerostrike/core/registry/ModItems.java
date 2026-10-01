@@ -26,6 +26,9 @@ public final class ModItems {
     public static final RegistryObject<Item> FP5_FLAMINGO_ITEM = ITEMS.register("fp5_flamingo",
             () -> new CruiseMissileItem<>(ModEntities.FP5_FLAMINGO, new Item.Properties().stacksTo(1)));
 
+    public static final RegistryObject<Item> STORM_SHADOW_ITEM = ITEMS.register("storm_shadow",
+            () -> new CruiseMissileItem<>(ModEntities.STORM_SHADOW, new Item.Properties().stacksTo(1)));
+
     public static final RegistryObject<Item> CRUISE_MISSILE_ITEM = ITEMS.register("cruise_missile",
             () -> new Item(new Item.Properties().stacksTo(1)));
 
