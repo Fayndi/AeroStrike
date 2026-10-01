@@ -1,0 +1,35 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.flamingo.idle": {
+      "loop": true,
+      "bones": {
+        "root": {
+          "rotation": [0, 0, 0]
+        }
+      }
+    },
+    "animation.flamingo.fly": {
+      "loop": true,
+      "animation_length": 1.0,
+      "bones": {
+        "body": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.25": [0.2, 0, 0.4],
+            "0.5": [0, 0, 0],
+            "0.75": [-0.2, 0, -0.4],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "wings": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0.5],
+            "1.0": [0, 0, 0]
+          }
+        }
+      }
+    }
+  }
+}

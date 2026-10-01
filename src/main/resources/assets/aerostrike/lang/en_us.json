@@ -1,0 +1,13 @@
+{
+  "itemGroup.aerostrike": "AeroStrike: Military Systems",
+  "item.aerostrike.fp5_flamingo": "FP-5 Flamingo Cruise Missile",
+  "item.aerostrike.cruise_missile": "Cruise Missile",
+  "item.aerostrike.ballistic_missile": "Ballistic Missile",
+  "item.aerostrike.fpv_drone": "FPV Kamikaze Drone",
+  "item.aerostrike.military_tablet": "Military Terminal Tablet",
+  "item.aerostrike.laser_designator": "Laser Target Designator",
+  "block.aerostrike.missile_silo": "Missile Launch Silo",
+  "block.aerostrike.radar_station": "Early Warning Radar Station",
+  "entity.aerostrike.fp5_flamingo": "FP-5 Flamingo Cruise Missile",
+  "message.aerostrike.missile_launched": "§c[AeroStrike] §fMissile launched towards coordinates: X=%d, Y=%d, Z=%d"
+}
