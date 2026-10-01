@@ -1,0 +1,34 @@
+# Gradle
+.gradle/
+build/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.vscode/
+bin/
+.settings/
+.metadata/
+.classpath
+.project
+*.launch
+
+# Minecraft Forge Runtime & Logs
+run/
+run-data/
+*.log
+crash-reports/
+logs/
+
+# MDK text files (optional cleanup)
+changelog.txt
+CREDITS.txt
+LICENSE.txt
+README.txt
+
+# OS Files
+.DS_Store
+Thumbs.db
