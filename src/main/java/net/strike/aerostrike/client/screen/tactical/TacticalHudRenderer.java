@@ -6,15 +6,14 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.phys.Vec3;
+import net.strike.aerostrike.client.tracker.ClientMissileTracker;
 
 import java.util.List;
-import java.util.function.BiFunction;
 
 /**
  * High-performance tactical HUD and MFD renderer.
- * Draws military glass cockpit status bars, vector flight routes,
- * animated marching dash lines, target lock reticles, and mission planning panels.
+ * Fully localized in Russian, renders glass cockpit telemetry, animated flight routes,
+ * target lock reticles, and real-time tracked cruise missiles.
  */
 public final class TacticalHudRenderer {
 
@@ -27,7 +26,7 @@ public final class TacticalHudRenderer {
     public static final int COLOR_TEXT_RED       = 0xFFFF3333; // Target red
     public static final int COLOR_ROUTE_LEG      = 0xCC00E5FF; // Cyan route line
     public static final int COLOR_ROUTE_TERMINAL = 0xEEFF3344; // Red terminal attack leg
-    public static final int COLOR_GRID_LINE      = 0x2200FF66; // Radar grid line
+    public static final int COLOR_MISSILE_ICON   = 0xFFFF6600; // Orange missile chevron
 
     public record ScreenPoint(double x, double y) {}
 
@@ -44,11 +43,11 @@ public final class TacticalHudRenderer {
         graphics.fill(0, 0, screenWidth, 24, 0xF0080D12);
         graphics.fill(0, 23, screenWidth, 24, COLOR_PANEL_BORDER);
 
-        // Military Title
-        graphics.drawString(font, "§2[ §aAERO-STRIKE C2 TERMINAL §2] §8// MIL-SPEC B-4", 10, 8, 0xFFFFFFFF, false);
+        // Military Title in Russian
+        graphics.drawString(font, "§2[ §aAERO-STRIKE C2 // ТАКТИЧЕСКИЙ ТЕРМИНАЛ §2] §8// СТАНДАРТ MIL-SPEC B-4", 10, 8, 0xFFFFFFFF, false);
 
         // Center: Cursor coordinates & Zoom
-        String coordText = String.format("MGRS: [X: %+d, Z: %+d]  |  ZOOM: %.2fx", cursorBlockX, cursorBlockZ, zoomScale);
+        String coordText = String.format("КУРСОР (MGRS): [X: %+d, Z: %+d]  |  МАСШТАБ: %.2fx", cursorBlockX, cursorBlockZ, zoomScale);
         int coordWidth = font.width(coordText);
         graphics.drawString(font, "§7" + coordText, (screenWidth - coordWidth) / 2, 8, 0xFFE0E0E0, false);
 
@@ -72,34 +71,34 @@ public final class TacticalHudRenderer {
         graphics.fill(x, y + 18, x + w, y + 19, COLOR_PANEL_BORDER);
 
         // Title
-        graphics.drawString(font, "§a§lTACTICAL MISSION COMPUTER", x + 10, y + 6, 0xFFFFFFFF, false);
+        graphics.drawString(font, "§a§lТАКТИЧЕСКИЙ КОМПЬЮТЕР", x + 10, y + 6, 0xFFFFFFFF, false);
 
         // Payload Detection
         int payloadCount = state.getAvailablePayloadCount(player);
         int curY = y + 24;
 
         if (payloadCount > 0) {
-            graphics.drawString(font, "§7PAYLOAD: §aStorm Shadow §f(x" + payloadCount + ")", x + 10, curY, 0xFFFFFFFF, false);
+            graphics.drawString(font, "§7БОЕЗАПАС: §aStorm Shadow §f(x" + payloadCount + ")", x + 10, curY, 0xFFFFFFFF, false);
         } else {
-            graphics.drawString(font, "§7PAYLOAD: §cNO MISSILES READY", x + 10, curY, 0xFFFFFFFF, false);
+            graphics.drawString(font, "§7БОЕЗАПАС: §cНЕТ ДОСТУПНЫХ РАКЕТ", x + 10, curY, 0xFFFFFFFF, false);
         }
         curY += 14;
 
         // Target Coordinates
         BlockPos target = state.getTargetPos();
         if (target != null) {
-            graphics.drawString(font, "§7TARGET: §eX: " + target.getX() + "  Z: " + target.getZ(), x + 10, curY, 0xFFFFFFFF, false);
+            graphics.drawString(font, "§7ЦЕЛЬ: §eX: " + target.getX() + "  Z: " + target.getZ(), x + 10, curY, 0xFFFFFFFF, false);
             curY += 12;
 
             if (player != null) {
                 double totalDist = state.calculateTotalDistance(player.position());
                 int eta = state.calculateEtaSeconds(totalDist);
-                graphics.drawString(font, String.format("§7TOTAL DIST: §f%,d m", (int) totalDist), x + 10, curY, 0xFFFFFFFF, false);
+                graphics.drawString(font, String.format("§7ДИСТАНЦИЯ: §f%,d м", (int) totalDist), x + 10, curY, 0xFFFFFFFF, false);
                 curY += 12;
-                graphics.drawString(font, String.format("§7TIME TO IMPACT: §f~%d sec", eta), x + 10, curY, 0xFFFFFFFF, false);
+                graphics.drawString(font, String.format("§7ВРЕМЯ ПОДЛЕТА: §f~%d сек", eta), x + 10, curY, 0xFFFFFFFF, false);
             }
         } else {
-            graphics.drawString(font, "§7TARGET: §cUNASSIGNED", x + 10, curY, 0xFFFFFFFF, false);
+            graphics.drawString(font, "§7ЦЕЛЬ: §cНЕ НАЗНАЧЕНА", x + 10, curY, 0xFFFFFFFF, false);
             curY += 14;
         }
         curY += 16;
@@ -110,7 +109,7 @@ public final class TacticalHudRenderer {
 
         // Waypoints info
         List<BlockPos> waypoints = state.getWaypoints();
-        String wpText = waypoints.isEmpty() ? "§7ROUTE: §fDirect to Target" : "§6WAYPOINTS: §f" + waypoints.size() + " pts";
+        String wpText = waypoints.isEmpty() ? "§7МАРШРУТ: §fПрямой к цели" : "§6ТОЧКИ МАРШРУТА: §f" + waypoints.size() + " ППМ";
         graphics.drawString(font, wpText, x + 10, curY, 0xFFFFFFFF, false);
         curY += 14;
 
@@ -118,9 +117,9 @@ public final class TacticalHudRenderer {
         if (state.isAddWaypointMode()) {
             boolean blink = (System.currentTimeMillis() / 400) % 2 == 0;
             int blinkColor = blink ? 0xFFFFAA00 : 0xFFFF5500;
-            graphics.drawString(font, "§e>> WP INSERT MODE ACTIVE <<", x + 10, curY, blinkColor, false);
+            graphics.drawString(font, "§e>> РЕЖИМ ВВОДА ТОЧЕК АКТИВЕН <<", x + 10, curY, blinkColor, false);
         } else {
-            graphics.drawString(font, "§8[Shift+Click to add WP]", x + 10, curY, 0xFF888888, false);
+            graphics.drawString(font, "§8[Shift + Клик — добавить точку]", x + 10, curY, 0xFF888888, false);
         }
     }
 
@@ -131,7 +130,6 @@ public final class TacticalHudRenderer {
         if (points == null || points.size() < 2) return;
 
         long time = System.currentTimeMillis();
-        // Moving dash animation offset
         int dashOffset = (int) ((time / 60) % 16);
 
         for (int i = 0; i < points.size() - 1; i++) {
@@ -176,8 +174,8 @@ public final class TacticalHudRenderer {
         pose.popPose();
         pose.popPose();
 
-        // Label
-        graphics.drawString(font, "§aHOST PLATFORM", (int) x + 9, (int) y - 4, 0xFFFFFFFF, true);
+        // Russian Label
+        graphics.drawString(font, "§aНОСИТЕЛЬ (ВЫ)", (int) x + 9, (int) y - 4, 0xFFFFFFFF, true);
     }
 
     public static void drawWaypointMarker(
@@ -187,7 +185,6 @@ public final class TacticalHudRenderer {
             int index,
             BlockPos pos
     ) {
-        // Diamond icon
         int ix = (int) x;
         int iy = (int) y;
 
@@ -199,8 +196,8 @@ public final class TacticalHudRenderer {
         // Center black hole
         graphics.fill(ix, iy, ix + 1, iy + 1, 0xFF000000);
 
-        // Label
-        String label = String.format("WP-%02d", index + 1);
+        // Russian Label
+        String label = String.format("ППМ-%02d", index + 1);
         graphics.drawString(font, "§6" + label, ix + 6, iy - 4, 0xFFFFFFFF, true);
     }
 
@@ -215,25 +212,24 @@ public final class TacticalHudRenderer {
         int iy = (int) y;
 
         long time = System.currentTimeMillis();
-        // Pulsing red animation
         float pulse = (float) (Math.sin(time / 200.0) * 0.5 + 0.5);
         int redColor = 0xFFFF0000 | ((int) (180 + pulse * 75) << 16);
 
         // Reticle brackets (size 12)
         int r = 10;
-        // Top-left bracket
+        // Top-left
         graphics.fill(ix - r, iy - r, ix - r + 5, iy - r + 1, redColor);
         graphics.fill(ix - r, iy - r, ix - r + 1, iy - r + 5, redColor);
 
-        // Top-right bracket
+        // Top-right
         graphics.fill(ix + r - 4, iy - r, ix + r + 1, iy - r + 1, redColor);
         graphics.fill(ix + r, iy - r, ix + r + 1, iy - r + 5, redColor);
 
-        // Bottom-left bracket
+        // Bottom-left
         graphics.fill(ix - r, iy + r, ix - r + 5, iy + r + 1, redColor);
         graphics.fill(ix - r, iy + r - 4, ix - r + 1, iy + r + 1, redColor);
 
-        // Bottom-right bracket
+        // Bottom-right
         graphics.fill(ix + r - 4, iy + r, ix + r + 1, iy + r + 1, redColor);
         graphics.fill(ix + r, iy + r - 4, ix + r + 1, iy + r + 1, redColor);
 
@@ -241,11 +237,57 @@ public final class TacticalHudRenderer {
         graphics.fill(ix - 3, iy, ix + 4, iy + 1, redColor);
         graphics.fill(ix, iy - 3, ix + 1, iy + 4, redColor);
 
-        // Target Information Tag
-        String targetTag = String.format("TARGET LOCK [%d, %d]", targetPos.getX(), targetPos.getZ());
-        String distTag = String.format("%,d m", (int) distFromPlayer);
+        // Russian Target Information Tag
+        String targetTag = String.format("ЗАХВАТ ЦЕЛИ [%d, %d]", targetPos.getX(), targetPos.getZ());
+        String distTag = String.format("%,d м", (int) distFromPlayer);
         graphics.drawString(font, "§c" + targetTag, ix + r + 4, iy - 8, 0xFFFFFFFF, true);
         graphics.drawString(font, "§e" + distTag, ix + r + 4, iy + 2, 0xFFFFFFFF, true);
+    }
+
+    /**
+     * Renders real-time tracked cruise missile icon, vector trail, and telemetry tag.
+     */
+    public static void drawTrackedMissile(
+            GuiGraphics graphics,
+            Font font,
+            double x, double y,
+            ClientMissileTracker.TrackedMissile missile
+    ) {
+        PoseStack pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(x, y, 0);
+
+        // Rotate missile chevron along flight yaw
+        pose.pushPose();
+        pose.mulPose(Axis.ZP.rotationDegrees(missile.yaw() + 180.0f));
+
+        // Sharp missile silhouette (orange/red)
+        int mColor = "TERMINAL".equals(missile.phaseName()) ? 0xFFFF2222 : 0xFFFF7700;
+        graphics.fill(-2, -5, 2, -4, mColor);
+        graphics.fill(-3, -4, 3, 1, mColor);
+        graphics.fill(-4, 1, 4, 3, mColor); // Wings
+        graphics.fill(-2, 3, 2, 5, mColor);
+        // Exhaust burn dot
+        graphics.fill(-1, 5, 1, 8, 0xFFFFFF00);
+
+        pose.popPose();
+        pose.popPose();
+
+        // Telemetry readout tag in Russian
+        int ix = (int) x;
+        int iy = (int) y;
+        String phaseRu = switch (missile.phaseName()) {
+            case "BOOST" -> "РАЗГОН";
+            case "CRUISE" -> "КРЕЙСЕР";
+            case "TERMINAL" -> "ПИКИРОВАНИЕ";
+            default -> missile.phaseName();
+        };
+
+        String nameTag = String.format("§6▲ %s §f[#%d]", missile.name(), missile.entityId());
+        String dataTag = String.format("§e%dm §7| §f%.0f м/с §7| §c%s", (int) missile.y(), missile.speed(), phaseRu);
+
+        graphics.drawString(font, nameTag, ix + 8, iy - 7, 0xFFFFFFFF, true);
+        graphics.drawString(font, dataTag, ix + 8, iy + 3, 0xFFFFFFFF, true);
     }
 
     public static void drawDashedLine(
@@ -288,7 +330,7 @@ public final class TacticalHudRenderer {
     public static void drawHollowRect(GuiGraphics graphics, int x, int y, int w, int h, int color) {
         graphics.fill(x, y, x + w, y + 1, color);
         graphics.fill(x, y + h - 1, x + w, y + h, color);
-        graphics.fill(x, y, x + 1, y + h, color);
+        graphics.fill(x, y + 1, x + 1, y + h, color);
         graphics.fill(x + w - 1, y, x + w, y + h, color);
     }
 

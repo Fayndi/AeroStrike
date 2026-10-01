@@ -176,6 +176,13 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
         this.ticksInFlight++;
 
         if (!this.level().isClientSide && this.level() instanceof ServerLevel serverLevel) {
+            // Safety: self-detonate if exceeding 10 min in flight or leaving atmospheric bounds
+            if (this.ticksInFlight > 20 * 600 || this.getY() > 340 || this.getY() < -60) {
+                this.explode();
+                this.discard();
+                return;
+            }
+
             // 1. Maintain active chunkloading around missile
             MissileChunkManager.forceChunk(serverLevel, this);
 
@@ -302,8 +309,15 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
             }
         } else {
             // Final target: check terminal dive threshold
-            double terminalThreshold = Math.max(64.0, (this.getY() - finalTarget.getY()) * 1.5);
+            double terminalThreshold = Math.max(48.0, Math.max(0.0, this.getY() - finalTarget.getY()) * 1.2);
             if (horizontalDistSq <= terminalThreshold * terminalThreshold) {
+                if (this.level() instanceof ServerLevel sl && sl.hasChunk(finalTarget.getX() >> 4, finalTarget.getZ() >> 4)) {
+                    int groundY = sl.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, finalTarget.getX(), finalTarget.getZ());
+                    if (groundY > sl.getMinBuildHeight()) {
+                        finalTarget = new BlockPos(finalTarget.getX(), groundY, finalTarget.getZ());
+                        this.setTargetPos(finalTarget);
+                    }
+                }
                 this.setFlightPhase(FlightPhase.TERMINAL);
                 return;
             }
@@ -314,7 +328,7 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
         // Terrain-following elevation calculation
         double desiredY = calculateDesiredCruiseAltitude();
         double yDiff = desiredY - this.getY();
-        double targetVy = Mth.clamp(yDiff * 0.1, -0.3, 0.4);
+        double targetVy = Mth.clamp(yDiff * 0.08, -0.35, 0.35);
 
         Vec3 desiredMotion = new Vec3(horizontalDir.x, targetVy, horizontalDir.z).normalize().scale(getMaxCruiseSpeed());
         Vec3 currentMotion = this.getDeltaMovement();
@@ -331,6 +345,14 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
             return;
         }
 
+        // Proximity fuse: detonate if within 4 blocks of target or if impact is imminent
+        double distSq = this.position().distanceToSqr(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5);
+        if (distSq <= 4.0 * 4.0 || (this.getY() <= target.getY() + 1.5 && Math.hypot(this.getX() - target.getX() - 0.5, this.getZ() - target.getZ() - 0.5) < 5.0)) {
+            this.explode();
+            this.discard();
+            return;
+        }
+
         Vec3 toTarget = new Vec3(
                 target.getX() + 0.5 - this.getX(),
                 target.getY() + 0.5 - this.getY(),
@@ -341,46 +363,40 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
         Vec3 desiredMotion = toTarget.scale(terminalSpeed);
         Vec3 currentMotion = this.getDeltaMovement();
 
-        this.setDeltaMovement(steerTowards(currentMotion, desiredMotion, getTurnRate() * 1.5f));
+        this.setDeltaMovement(steerTowards(currentMotion, desiredMotion, getTurnRate() * 1.8f));
     }
 
     /**
      * Terrain-following radar simulation:
-     * Scans surface directly below and ahead along the velocity vector.
+     * Scans surface directly below and ahead along the velocity vector using fast native heightmaps.
      */
     protected double calculateDesiredCruiseAltitude() {
         Level lvl = this.level();
         double currentX = this.getX();
         double currentZ = this.getZ();
 
-        // 1. Altitude of terrain directly below
-        int groundBelowY = findGroundY(new BlockPos((int) currentX, (int) this.getY(), (int) currentZ));
+        int groundBelowY = getGroundElevation(lvl, (int) currentX, (int) currentZ);
 
-        // 2. Obstacle scanning ahead (lookahead ~30 blocks along motion)
         Vec3 motion = this.getDeltaMovement();
-        Vec3 lookahead = motion.normalize().scale(30.0);
-        int groundAheadY = findGroundY(new BlockPos(
-                (int) (currentX + lookahead.x),
-                (int) (this.getY()),
-                (int) (currentZ + lookahead.z)
-        ));
+        double horizSpeed = Math.sqrt(motion.x * motion.x + motion.z * motion.z);
+        int groundAheadY = groundBelowY;
+        if (horizSpeed > 0.05) {
+            Vec3 horizNorm = new Vec3(motion.x, 0, motion.z).normalize();
+            int aheadX = (int) (currentX + horizNorm.x * 25.0);
+            int aheadZ = (int) (currentZ + horizNorm.z * 25.0);
+            groundAheadY = getGroundElevation(lvl, aheadX, aheadZ);
+        }
 
         int highestObstacle = Math.max(groundBelowY, groundAheadY);
         return highestObstacle + getEffectiveCruiseClearance();
     }
 
-    private int findGroundY(BlockPos pos) {
-        Level lvl = this.level();
-        int searchStartY = Math.min(lvl.getMaxBuildHeight(), (int) this.getY() + 40);
-        int minY = lvl.getMinBuildHeight();
-
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(pos.getX(), searchStartY, pos.getZ());
-        while (cursor.getY() > minY) {
-            BlockState state = lvl.getBlockState(cursor);
-            if (!state.isAir() && state.blocksMotion()) {
-                return cursor.getY();
+    private int getGroundElevation(Level lvl, int x, int z) {
+        if (lvl.hasChunk(x >> 4, z >> 4)) {
+            int height = lvl.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, x, z);
+            if (height > lvl.getMinBuildHeight()) {
+                return height;
             }
-            cursor.move(0, -1, 0);
         }
         return (int) lvl.getSeaLevel();
     }

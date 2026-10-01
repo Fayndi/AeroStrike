@@ -105,6 +105,15 @@ public class LaunchAirMissilePacket {
             Vec3 playerLook = player.getLookAngle();
             Vec3 rightVec = new Vec3(-playerLook.z, 0, playerLook.x).normalize();
 
+            // Resolve real ground surface Y at target coordinates if chunk is loaded
+            BlockPos resolvedTarget = packet.targetPos;
+            if (serverLevel.hasChunk(packet.targetPos.getX() >> 4, packet.targetPos.getZ() >> 4)) {
+                int groundY = serverLevel.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, packet.targetPos.getX(), packet.targetPos.getZ());
+                if (groundY > serverLevel.getMinBuildHeight()) {
+                    resolvedTarget = new BlockPos(packet.targetPos.getX(), groundY, packet.targetPos.getZ());
+                }
+            }
+
             for (int i = 0; i < missilesToLaunch; i++) {
                 StormShadowEntity missile = ModEntities.STORM_SHADOW.get().create(serverLevel);
                 if (missile == null) continue;
@@ -121,7 +130,7 @@ public class LaunchAirMissilePacket {
                 missile.setWaypoints(packet.waypoints);
 
                 serverLevel.addFreshEntity(missile);
-                missile.launch(packet.targetPos);
+                missile.launch(resolvedTarget);
             }
 
             serverLevel.playSound(null, player.getX(), player.getY(), player.getZ(),

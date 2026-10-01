@@ -14,9 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Shared state for the Tactical C2 Mission Planning system.
- * Keeps target, waypoints, flight profile, and launch logic synchronized
- * between Xaero WorldMap integration and the standalone radar map.
+ * Shared state for the Tactical C2 Mission Planning system (Russian Localization).
  */
 public class TacticalMissionState {
 
@@ -27,12 +25,12 @@ public class TacticalMissionState {
     private int salvoCount = 1;
     private boolean addWaypointMode = false;
 
-    private String statusMessage = "SYSTEM READY // STANDBY";
+    private String statusMessage = "СИСТЕМА ГОТОВА // ОЖИДАНИЕ";
     private int statusColor = 0xFF55FF55; // Green
     private long statusMessageExpiry = 0;
 
     public static final float[] ALTITUDES = {14.0f, 30.0f, 60.0f, 120.0f};
-    public static final String[] ALTITUDE_LABELS = {"14m (NOE)", "30m (LOW)", "60m (MED)", "120m (HIGH)"};
+    public static final String[] ALTITUDE_LABELS = {"14м (ПМВ)", "30м (НИЗКИЙ)", "60м (СРЕДНИЙ)", "120м (ВЫСОКИЙ)"};
 
     public TacticalMissionState(ItemStack tabletStack) {
         this.tabletStack = tabletStack;
@@ -84,7 +82,7 @@ public class TacticalMissionState {
                 return ALTITUDE_LABELS[i];
             }
         }
-        return (int) this.cruiseAltitude + "m";
+        return (int) this.cruiseAltitude + "м";
     }
 
     public void cycleSalvo() {
@@ -100,9 +98,9 @@ public class TacticalMissionState {
 
     public String getSalvoLabel() {
         return switch (this.salvoCount) {
-            case 2 -> "2x (DOUBLE)";
-            case 4 -> "4x (BATTERY)";
-            default -> "1x (SINGLE)";
+            case 2 -> "2x (ПАРА)";
+            case 4 -> "4x (ЗАЛП)";
+            default -> "1x (ОДИНОЧНЫЙ)";
         };
     }
 
@@ -117,27 +115,27 @@ public class TacticalMissionState {
     public void clearWaypoints() {
         this.waypoints.clear();
         save();
-        setStatus("ROUTE WAYPOINTS CLEARED", 0xFFFFAA00);
+        setStatus("МАРШРУТ ОЧИЩЕН", 0xFFFFAA00);
     }
 
     public void removeLastWaypoint() {
         if (!this.waypoints.isEmpty()) {
             this.waypoints.remove(this.waypoints.size() - 1);
             save();
-            setStatus("LAST WAYPOINT REMOVED", 0xFFFFAA00);
+            setStatus("ПОСЛЕДНЯЯ ТОЧКА УДАЛЕНА", 0xFFFFAA00);
         }
     }
 
     public void addWaypoint(BlockPos pos) {
         this.waypoints.add(pos);
         save();
-        setStatus("WP-" + String.format("%02d", this.waypoints.size()) + " ADDED: [" + pos.getX() + ", " + pos.getZ() + "]", 0xFF55FFFF);
+        setStatus("ППМ-" + String.format("%02d", this.waypoints.size()) + " ДОБАВЛЕНА: [" + pos.getX() + ", " + pos.getZ() + "]", 0xFF55FFFF);
     }
 
     public void setTarget(BlockPos pos) {
         this.targetPos = pos;
         save();
-        setStatus("TARGET DESIGNATED: [" + pos.getX() + ", " + pos.getZ() + "]", 0xFFFF5555);
+        setStatus("ЦЕЛЬ ЗАХВАЧЕНА: [" + pos.getX() + ", " + pos.getZ() + "]", 0xFFFF5555);
     }
 
     public double calculateTotalDistance(Vec3 origin) {
@@ -157,8 +155,6 @@ public class TacticalMissionState {
     }
 
     public int calculateEtaSeconds(double totalDistBlocks) {
-        // Storm Shadow cruise speed is approx 1.4 blocks/tick = 28 blocks/sec in low NOE hug
-        // Standard cruise is ~35-40 m/s
         return (int) Math.max(1, totalDistBlocks / 35.0);
     }
 
@@ -176,14 +172,14 @@ public class TacticalMissionState {
 
     public boolean executeLaunch(LocalPlayer player) {
         if (player == null || this.targetPos == null) {
-            setStatus("ERROR: NO TARGET DESIGNATED", 0xFFFF3333);
+            setStatus("ОШИБКА: НЕТ НАЗНАЧЕННОЙ ЦЕЛИ", 0xFFFF3333);
             if (player != null) player.playSound(SoundEvents.NOTE_BLOCK_BASS.value(), 1.0f, 0.5f);
             return false;
         }
 
         int available = getAvailablePayloadCount(player);
         if (available <= 0) {
-            setStatus("ABORT: NO STORM SHADOW IN INVENTORY", 0xFFFF3333);
+            setStatus("ОТМЕНА: НЕТ STORM SHADOW В ИНВЕНТАРЕ", 0xFFFF3333);
             player.playSound(SoundEvents.NOTE_BLOCK_BASS.value(), 1.0f, 0.5f);
             return false;
         }
@@ -199,7 +195,7 @@ public class TacticalMissionState {
         ));
 
         save();
-        setStatus("MISSILE SALVO AIR-DROP AUTHORIZED", 0xFF55FF55);
+        setStatus("СБРОС ЗАЛПА РАКЕТ АВТОРИЗОВАН", 0xFF55FF55);
         player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 1.4f);
         return true;
     }
@@ -212,7 +208,7 @@ public class TacticalMissionState {
 
     public String getStatusMessage() {
         if (System.currentTimeMillis() > this.statusMessageExpiry) {
-            return this.addWaypointMode ? "CLICK MAP TO INSERT WAYPOINT" : "CLICK MAP TO DESIGNATE TARGET";
+            return this.addWaypointMode ? "КЛИКНИТЕ ДЛЯ ВВОДА ТОЧКИ (ППМ)" : "КЛИКНИТЕ ДЛЯ ЗАХВАТА ЦЕЛИ";
         }
         return this.statusMessage;
     }

@@ -23,6 +23,12 @@ public final class ModNetwork {
                 .decoder(LaunchAirMissilePacket::decode)
                 .consumerMainThread(LaunchAirMissilePacket::handle)
                 .add();
+
+        CHANNEL.messageBuilder(net.strike.aerostrike.common.network.packet.s2c.SyncMissilesPacket.class, packetId++)
+                .encoder(net.strike.aerostrike.common.network.packet.s2c.SyncMissilesPacket::encode)
+                .decoder(net.strike.aerostrike.common.network.packet.s2c.SyncMissilesPacket::decode)
+                .consumerMainThread(net.strike.aerostrike.common.network.packet.s2c.SyncMissilesPacket::handle)
+                .add();
     }
 
     public static <MSG> void sendToServer(MSG message) {

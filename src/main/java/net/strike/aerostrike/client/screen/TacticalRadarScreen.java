@@ -1,10 +1,9 @@
 package net.strike.aerostrike.client.screen;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -16,16 +15,15 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.strike.aerostrike.client.screen.tactical.TacticalHudRenderer;
 import net.strike.aerostrike.client.screen.tactical.TacticalMissionState;
+import net.strike.aerostrike.client.tracker.ClientMissileTracker;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Fullscreen Standalone Tactical Radar Screen (MFD).
- *
- * Provides a high-fidelity vector radar map with pan & zoom, range rings,
- * compass, waypoint route planning, and air-launch missile authorization.
- * Used as standalone map or fallback when Xaero's World Map is not installed.
+ * Fullscreen Standalone Tactical Radar Screen (Russian Localization).
+ * Provides pan & zoom, range rings, cardinal compass, active missile tracking,
+ * and button hover tooltips.
  */
 @OnlyIn(Dist.CLIENT)
 public class TacticalRadarScreen extends Screen {
@@ -42,7 +40,7 @@ public class TacticalRadarScreen extends Screen {
     private double lastDragMouseY;
 
     // Side Control Panel Geometry
-    private int panelW = 210;
+    private int panelW = 215;
     private int panelX;
     private int panelY = 28;
     private int panelH;
@@ -57,7 +55,7 @@ public class TacticalRadarScreen extends Screen {
     private Button launchButton;
 
     public TacticalRadarScreen(ItemStack tabletStack) {
-        super(Component.literal("AeroStrike Tactical Radar C2"));
+        super(Component.literal("AeroStrike Тактический Радар C2"));
         this.tabletStack = tabletStack;
         this.missionState = new TacticalMissionState(tabletStack);
     }
@@ -81,80 +79,87 @@ public class TacticalRadarScreen extends Screen {
         int btnW = this.panelW - 20;
         int curY = this.panelY + 115;
 
-        // Button: Add Waypoint Toggle
+        // Button: Add Waypoint Toggle with Russian Tooltip
         this.addWpButton = this.addRenderableWidget(Button.builder(
                 getAddWpText(),
                 b -> {
                     this.missionState.toggleAddWaypointMode();
                     b.setMessage(getAddWpText());
                 }
-        ).bounds(btnX, curY, btnW, 18).build());
+        ).tooltip(Tooltip.create(Component.literal("Включение режима ввода промежуточных точек маршрута (ППМ).\nКликните ЛКМ по радару для добавления точки.\nПКМ по точке — удаляет её.")))
+        .bounds(btnX, curY, btnW, 18).build());
         curY += 21;
 
         // Button: Undo Last WP & Clear
         int halfW = (btnW - 4) / 2;
         this.undoWpButton = this.addRenderableWidget(Button.builder(
-                Component.literal("§e< UNDO WP"),
+                Component.literal("§e< УДАЛИТЬ"),
                 b -> this.missionState.removeLastWaypoint()
-        ).bounds(btnX, curY, halfW, 18).build());
+        ).tooltip(Tooltip.create(Component.literal("Удалить последнюю добавленную точку маршрута.")))
+        .bounds(btnX, curY, halfW, 18).build());
 
         this.clearRouteButton = this.addRenderableWidget(Button.builder(
-                Component.literal("§cCLR ROUTE"),
+                Component.literal("§cСБРОСИТЬ"),
                 b -> this.missionState.clearWaypoints()
-        ).bounds(btnX + halfW + 4, curY, halfW, 18).build());
+        ).tooltip(Tooltip.create(Component.literal("Полностью сбросить маршрут и удалить все промежуточные точки.")))
+        .bounds(btnX + halfW + 4, curY, halfW, 18).build());
         curY += 24;
 
-        // Button: Cruise Altitude
+        // Button: Cruise Altitude with Russian Tooltip
         this.altButton = this.addRenderableWidget(Button.builder(
                 getAltText(),
                 b -> {
                     this.missionState.cycleAltitude();
                     b.setMessage(getAltText());
                 }
-        ).bounds(btnX, curY, btnW, 18).build());
+        ).tooltip(Tooltip.create(Component.literal("Выбор высоты крейсерского полета (эшелона):\n• 14м (ПМВ) — Сверхмалая высота, огибание рельефа, скрытность от радаров ПВО.\n• 30м — Низкий эшелон.\n• 60м — Средний эшелон.\n• 120м — Высотный полет над лесами и горами.")))
+        .bounds(btnX, curY, btnW, 18).build());
         curY += 21;
 
-        // Button: Salvo Size
+        // Button: Salvo Size with Russian Tooltip
         this.salvoButton = this.addRenderableWidget(Button.builder(
                 getSalvoText(),
                 b -> {
                     this.missionState.cycleSalvo();
                     b.setMessage(getSalvoText());
                 }
-        ).bounds(btnX, curY, btnW, 18).build());
+        ).tooltip(Tooltip.create(Component.literal("Количество выпускаемых ракет в одном залпе:\n• 1x — Одиночный пуск.\n• 2x — Пуск парой с интервалом.\n• 4x — Батарейный залп для прорыва ПВО.")))
+        .bounds(btnX, curY, btnW, 18).build());
         curY += 21;
 
-        // Button: Center on Player
+        // Button: Center on Aircraft with Russian Tooltip
         this.centerButton = this.addRenderableWidget(Button.builder(
-                Component.literal("§fCENTER ON AIRCRAFT"),
+                Component.literal("§fЦЕНТРИРОВАТЬ НА САМОЛЕТЕ"),
                 b -> centerOnPlayer()
-        ).bounds(btnX, curY, btnW, 18).build());
+        ).tooltip(Tooltip.create(Component.literal("Переместить радар на текущую позицию вашего самолета/персонажа.")))
+        .bounds(btnX, curY, btnW, 18).build());
         curY += 26;
 
-        // Button: BIG LAUNCH MISSILE
+        // Button: BIG LAUNCH MISSILE with Russian Tooltip
         this.launchButton = this.addRenderableWidget(Button.builder(
-                Component.literal("§c§l>>> LAUNCH AIR MISSILE <<<"),
+                Component.literal("§c§l>>> ПУСК КРЫЛАТЫХ РАКЕТ <<<"),
                 b -> {
                     boolean success = this.missionState.executeLaunch(Minecraft.getInstance().player);
                     if (success) {
                         this.onClose();
                     }
                 }
-        ).bounds(btnX, curY, btnW, 24).build());
+        ).tooltip(Tooltip.create(Component.literal("АВТОРИЗАЦИЯ И СБРОС РАКЕТ:\nПроизводит немедленный сброс выбранного числа ракет Storm Shadow из инвентаря.\nРакеты ложатся на запрограммированный маршрут полета.")))
+        .bounds(btnX, curY, btnW, 24).build());
     }
 
     private Component getAddWpText() {
         return this.missionState.isAddWaypointMode()
-                ? Component.literal("§e[+ WP MODE: ACTIVE]")
-                : Component.literal("§7[+ ADD WAYPOINT]");
+                ? Component.literal("§e[+ ТОЧКИ: АКТИВНО]")
+                : Component.literal("§7[+ ВВОД ТОЧЕК (ППМ)]");
     }
 
     private Component getAltText() {
-        return Component.literal("§bALT: §f" + this.missionState.getAltitudeLabel());
+        return Component.literal("§bЭШЕЛОН: §f" + this.missionState.getAltitudeLabel());
     }
 
     private Component getSalvoText() {
-        return Component.literal("§dSALVO: §f" + this.missionState.getSalvoLabel());
+        return Component.literal("§dЗАЛП: §f" + this.missionState.getSalvoLabel());
     }
 
     private void centerOnPlayer() {
@@ -237,14 +242,21 @@ public class TacticalRadarScreen extends Screen {
             TacticalHudRenderer.drawTargetReticle(guiGraphics, this.font, sx, sy, target, dist);
         }
 
-        // 6. Render Host Aircraft Marker
+        // 6. Render Real-Time Tracked Active Missiles
+        for (ClientMissileTracker.TrackedMissile missile : ClientMissileTracker.getActiveMissiles()) {
+            double mx = worldXToScreen(missile.x());
+            double my = worldZToScreen(missile.z());
+            TacticalHudRenderer.drawTrackedMissile(guiGraphics, this.font, mx, my, missile);
+        }
+
+        // 7. Render Host Aircraft Marker
         if (player != null) {
             double px = worldXToScreen(player.getX());
             double py = worldZToScreen(player.getZ());
             TacticalHudRenderer.drawPlayerMarker(guiGraphics, this.font, px, py, player.getYRot());
         }
 
-        // 7. Render Top Tactical Status Bar
+        // 8. Render Top Tactical Status Bar
         int cursorWorldX = (int) Math.floor(screenToWorldX(mouseX));
         int cursorWorldZ = (int) Math.floor(screenToWorldZ(mouseY));
         TacticalHudRenderer.drawTopStatusBar(
@@ -257,7 +269,7 @@ public class TacticalRadarScreen extends Screen {
                 this.missionState
         );
 
-        // 8. Render Side Control Panel Frame
+        // 9. Render Side Control Panel Frame
         TacticalHudRenderer.drawControlPanelFrame(
                 guiGraphics,
                 this.font,
@@ -266,12 +278,11 @@ public class TacticalRadarScreen extends Screen {
                 this.missionState
         );
 
-        // 9. Render Widgets / Buttons
+        // 10. Render Widgets / Buttons & Tooltips
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
     }
 
     private void renderRadarGrid(GuiGraphics graphics, LocalPlayer player) {
-        // Grid spacing in blocks based on zoom level
         int step = (this.zoom > 0.8) ? 100 : (this.zoom > 0.3 ? 250 : 500);
 
         int minWorldX = (int) screenToWorldX(0);
@@ -313,7 +324,7 @@ public class TacticalRadarScreen extends Screen {
                 int rPx = (int) (dist * this.zoom);
                 if (rPx > 10 && rPx < Math.max(this.width, this.height) * 2) {
                     TacticalHudRenderer.drawCircle(graphics, (int) px, (int) py, rPx, 0x2200FF88);
-                    graphics.drawString(this.font, dist + "m", (int) px + rPx + 3, (int) py - 4, 0x4400FF88, false);
+                    graphics.drawString(this.font, dist + "м", (int) px + rPx + 3, (int) py - 4, 0x4400FF88, false);
                 }
             }
         }
@@ -331,7 +342,7 @@ public class TacticalRadarScreen extends Screen {
         int playerY = player != null ? (int) player.getY() : 64;
 
         if (button == 0) { // Left Click
-            if (this.missionState.isAddWaypointMode() || hasShiftDown()) {
+            if (this.missionState.isAddWaypointMode() || Screen.hasShiftDown()) {
                 this.missionState.addWaypoint(new BlockPos(blockX, playerY, blockZ));
                 if (player != null) player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 1.6f);
                 return true;
@@ -344,7 +355,6 @@ public class TacticalRadarScreen extends Screen {
                 return true;
             }
         } else if (button == 1) { // Right Click
-            // Check if clicked close to an existing waypoint to delete it
             List<BlockPos> waypoints = this.missionState.getWaypoints();
             for (int i = waypoints.size() - 1; i >= 0; i--) {
                 BlockPos wp = waypoints.get(i);
@@ -353,13 +363,13 @@ public class TacticalRadarScreen extends Screen {
                 if (Math.abs(sx - mouseX) <= 12 && Math.abs(sy - mouseY) <= 12) {
                     this.missionState.getWaypoints().remove(i);
                     this.missionState.save();
-                    this.missionState.setStatus("WAYPOINT WP-" + (i + 1) + " DELETED", 0xFFFFAA00);
+                    this.missionState.setStatus("ТОЧКА ППМ-" + (i + 1) + " УДАЛЕНА", 0xFFFFAA00);
                     if (player != null) player.playSound(SoundEvents.DISPENSER_FAIL, 0.8f, 1.4f);
                     return true;
                 }
             }
 
-            if (this.missionState.isAddWaypointMode() || hasShiftDown()) {
+            if (this.missionState.isAddWaypointMode() || Screen.hasShiftDown()) {
                 this.missionState.addWaypoint(new BlockPos(blockX, playerY, blockZ));
                 if (player != null) player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f, 1.6f);
             } else {
@@ -402,7 +412,6 @@ public class TacticalRadarScreen extends Screen {
         double factor = (delta > 0) ? 1.25 : 0.8;
         double newZoom = Mth.clamp(this.zoom * factor, 0.05, 3.0);
 
-        // Zoom relative to mouse cursor
         double worldUnderMouseX = screenToWorldX(mouseX);
         double worldUnderMouseZ = screenToWorldZ(mouseY);
 
