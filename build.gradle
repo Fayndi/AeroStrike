@@ -143,3 +143,28 @@ publishing {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+def exportTargetDir = project.findProperty('exportDir') ?: 'C:/Users/nikit/Desktop/AeroStrikeExport'
+
+def exportJarTask = tasks.register('exportJar', Copy) {
+    dependsOn tasks.named('jar')
+    dependsOn tasks.matching { it.name == 'reobfJar' }
+    from layout.buildDirectory.dir('libs')
+    include '*.jar'
+    into file(exportTargetDir)
+    doFirst {
+        file(exportTargetDir).mkdirs()
+    }
+    doLast {
+        println "[AeroStrike] Mod jar successfully exported to: ${exportTargetDir}"
+    }
+}
+
+tasks.named('assemble').configure {
+    finalizedBy exportJarTask
+}
+
+tasks.named('build').configure {
+    finalizedBy exportJarTask
+}
+
