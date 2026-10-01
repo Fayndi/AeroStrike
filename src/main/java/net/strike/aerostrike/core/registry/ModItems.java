@@ -17,7 +17,7 @@ public final class ModItems {
 
     // Core electronics & military equipment
     public static final RegistryObject<Item> MILITARY_TABLET = ITEMS.register("military_tablet",
-            () -> new Item(new Item.Properties().stacksTo(1)));
+            () -> new net.strike.aerostrike.common.item.tablet.MilitaryTabletItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<Item> LASER_DESIGNATOR = ITEMS.register("laser_designator",
             () -> new Item(new Item.Properties().stacksTo(1)));

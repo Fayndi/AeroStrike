@@ -59,6 +59,29 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
 
     // Flight variables
     protected int ticksInFlight = 0;
+    protected final java.util.List<BlockPos> waypoints = new java.util.ArrayList<>();
+    protected int currentWaypointIndex = 0;
+    protected float customCruiseClearance = -1.0f;
+
+    public void setWaypoints(java.util.List<BlockPos> points) {
+        this.waypoints.clear();
+        if (points != null) {
+            this.waypoints.addAll(points);
+        }
+        this.currentWaypointIndex = 0;
+    }
+
+    public java.util.List<BlockPos> getWaypoints() {
+        return this.waypoints;
+    }
+
+    public void setCustomCruiseClearance(float clearance) {
+        this.customCruiseClearance = clearance;
+    }
+
+    public float getEffectiveCruiseClearance() {
+        return this.customCruiseClearance > 0 ? this.customCruiseClearance : this.getCruiseClearance();
+    }
 
     public AbstractCruiseMissileEntity(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -247,20 +270,43 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
      * and contours terrain using downward and forward raycasts.
      */
     protected void tickCruisePhase() {
-        BlockPos target = getTargetPos();
-        if (target == null) {
+        BlockPos finalTarget = getTargetPos();
+        if (finalTarget == null) {
             return;
         }
 
-        double dx = target.getX() - this.getX();
-        double dz = target.getZ() - this.getZ();
+        // Check if there are intermediate waypoints remaining
+        BlockPos currentDestination = finalTarget;
+        boolean isIntermediate = false;
+
+        if (this.currentWaypointIndex < this.waypoints.size()) {
+            currentDestination = this.waypoints.get(this.currentWaypointIndex);
+            isIntermediate = true;
+        }
+
+        double dx = currentDestination.getX() + 0.5 - this.getX();
+        double dz = currentDestination.getZ() + 0.5 - this.getZ();
         double horizontalDistSq = dx * dx + dz * dz;
 
-        // If close enough horizontally, enter terminal dive
-        double terminalThreshold = Math.max(64.0, (this.getY() - target.getY()) * 1.5);
-        if (horizontalDistSq <= terminalThreshold * terminalThreshold) {
-            this.setFlightPhase(FlightPhase.TERMINAL);
-            return;
+        // If intermediate waypoint reached (within 24 blocks), advance to next waypoint
+        if (isIntermediate) {
+            if (horizontalDistSq <= 24.0 * 24.0) {
+                this.currentWaypointIndex++;
+                if (this.currentWaypointIndex < this.waypoints.size()) {
+                    currentDestination = this.waypoints.get(this.currentWaypointIndex);
+                } else {
+                    currentDestination = finalTarget;
+                }
+                dx = currentDestination.getX() + 0.5 - this.getX();
+                dz = currentDestination.getZ() + 0.5 - this.getZ();
+            }
+        } else {
+            // Final target: check terminal dive threshold
+            double terminalThreshold = Math.max(64.0, (this.getY() - finalTarget.getY()) * 1.5);
+            if (horizontalDistSq <= terminalThreshold * terminalThreshold) {
+                this.setFlightPhase(FlightPhase.TERMINAL);
+                return;
+            }
         }
 
         Vec3 horizontalDir = new Vec3(dx, 0, dz).normalize();
@@ -320,7 +366,7 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
         ));
 
         int highestObstacle = Math.max(groundBelowY, groundAheadY);
-        return highestObstacle + getCruiseClearance();
+        return highestObstacle + getEffectiveCruiseClearance();
     }
 
     private int findGroundY(BlockPos pos) {
@@ -453,6 +499,17 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
             this.setTargetPos(NbtUtils.readBlockPos(tag.getCompound("TargetPos")));
         }
         this.ticksInFlight = tag.getInt("TicksInFlight");
+        if (tag.contains("Waypoints", net.minecraft.nbt.Tag.TAG_LIST)) {
+            net.minecraft.nbt.ListTag list = tag.getList("Waypoints", net.minecraft.nbt.Tag.TAG_COMPOUND);
+            this.waypoints.clear();
+            for (int i = 0; i < list.size(); i++) {
+                this.waypoints.add(NbtUtils.readBlockPos(list.getCompound(i)));
+            }
+        }
+        this.currentWaypointIndex = tag.getInt("WaypointIndex");
+        if (tag.contains("CustomCruiseClearance")) {
+            this.customCruiseClearance = tag.getFloat("CustomCruiseClearance");
+        }
     }
 
     @Override
@@ -463,6 +520,14 @@ public abstract class AbstractCruiseMissileEntity extends Entity implements GeoE
             tag.put("TargetPos", NbtUtils.writeBlockPos(target));
         }
         tag.putInt("TicksInFlight", this.ticksInFlight);
+
+        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        for (BlockPos wp : this.waypoints) {
+            list.add(NbtUtils.writeBlockPos(wp));
+        }
+        tag.put("Waypoints", list);
+        tag.putInt("WaypointIndex", this.currentWaypointIndex);
+        tag.putFloat("CustomCruiseClearance", this.customCruiseClearance);
     }
 
     @Override

@@ -50,8 +50,8 @@ public class AeroStrike {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            // Network channels and packet registrations will be called here
-            LOGGER.info("[AeroStrike] Common setup completed.");
+            net.strike.aerostrike.common.network.ModNetwork.registerPackets();
+            LOGGER.info("[AeroStrike] Common setup completed. ModNetwork registered.");
         });
     }
 }
