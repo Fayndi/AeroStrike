@@ -79,6 +79,10 @@ repositories {
         name = 'GeckoLib'
         url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
     }
+    maven {
+        name = "Xaero's Maven"
+        url = "https://chocolateminecraft.com/maven"
+    }
 }
 
 dependencies {
@@ -89,6 +93,10 @@ dependencies {
 
     // Mixin annotation processor
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // Optional Xaero's World Map & XaeroLib integration for tactical tablet
+    compileOnly fg.deobf("xaero.lib:xaerolib-forge-1.20.1:1.7.3")
+    compileOnly fg.deobf("xaero.map:xaeroworldmap-forge-1.20.1:1.46.0")
 }
 
 mixin {
