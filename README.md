@@ -22,6 +22,7 @@
 - **GeckoLib 4.8.4**: анимации и геометрия 3D-моделей техники.
 - **Mixin Ready**: базовая конфигурация Mixin (`aerostrike.mixins.json`) для кастомных манипуляций камерой дронов и рендером.
 - **Developer Guide**: полное руководство по созданию ракет и работе с физикой находится в [`docs/MISSILE_DEVELOPMENT_GUIDE.md`](docs/MISSILE_DEVELOPMENT_GUIDE.md).
+- **Project Roadmap**: подробная дорожная карта развития всех фаз проекта описана в [`ROADMAP.md`](ROADMAP.md).
 
 ---
 
