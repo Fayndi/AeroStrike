@@ -20,6 +20,7 @@ import software.bernie.geckolib.core.animation.RawAnimation;
 public class StormShadowEntity extends AbstractCruiseMissileEntity {
 
     protected static final RawAnimation FLY_ANIM = RawAnimation.begin().thenLoop("animation.storm_shadow.fly");
+    protected static final RawAnimation DEPLOY_ANIM = RawAnimation.begin().thenPlay("animation.storm_shadow.deploy").thenLoop("animation.storm_shadow.fly");
     protected static final RawAnimation IDLE_ANIM = RawAnimation.begin().thenLoop("animation.storm_shadow.idle");
 
     public StormShadowEntity(EntityType<? extends StormShadowEntity> entityType, Level level) {
@@ -74,10 +75,13 @@ public class StormShadowEntity extends AbstractCruiseMissileEntity {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "flight_controller", 4, state -> {
-            if (getFlightPhase() != FlightPhase.STANDBY) {
-                return state.setAndContinue(FLY_ANIM);
+            FlightPhase phase = getFlightPhase();
+            if (phase == FlightPhase.STANDBY) {
+                return state.setAndContinue(IDLE_ANIM);
+            } else if (phase == FlightPhase.BOOST) {
+                return state.setAndContinue(DEPLOY_ANIM);
             }
-            return state.setAndContinue(IDLE_ANIM);
+            return state.setAndContinue(FLY_ANIM);
         }));
     }
 }

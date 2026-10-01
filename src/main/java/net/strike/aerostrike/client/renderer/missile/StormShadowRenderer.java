@@ -17,18 +17,13 @@ public class StormShadowRenderer extends GeoEntityRenderer<StormShadowEntity> {
     }
 
     @Override
-    public void render(StormShadowEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
-        poseStack.pushPose();
-
-        // Calculate smooth rotation interpolation
+    protected void applyRotations(StormShadowEntity entity, PoseStack poseStack, float ageInTicks, float rotationYaw, float partialTick) {
         float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
         float pitch = Mth.rotLerp(partialTick, entity.xRotO, entity.getXRot());
 
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f - yaw));
-        poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
-
-        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
-
-        poseStack.popPose();
+        // Align model heading to flight velocity vector (nose is +Z in model space)
+        poseStack.mulPose(Axis.YP.rotationDegrees(-yaw));
+        // Align model attitude to vertical flight angle (negative pitch rotates nose up when climbing)
+        poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
     }
 }
